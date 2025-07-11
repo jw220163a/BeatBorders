@@ -27,7 +27,7 @@ with open('config.yaml') as f:
 
 CLIENT_ID        = cfg['spotify']['client_id']
 CLIENT_SECRET    = cfg['spotify']['client_secret']
-MARKETS_LIMIT    = min(cfg.get('markets_limit', 10), 50)
+MARKETS_LIMIT    = cfg.get('markets_limit', 10)
 GENRES_LIMIT     = cfg.get('genres_limit', 200)
 TRACKS_LIMIT     = cfg.get('tracks_per_genre', 200)
 TOP_N_GENRES     = cfg.get('top_n_genres', 10)
