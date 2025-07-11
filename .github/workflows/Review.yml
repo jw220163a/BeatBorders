@@ -24,6 +24,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issueNumbers = JSON.parse('${{ steps.find-issues.outputs.issues }}');
+
             const PROJECT_ID = 'PVT_kwHODSILks4A9pWS';
             const STATUS_FIELD_ID = 'PVTSSF_lAHODSILks4A9pWSzgxSYFA';
             const REVIEW_OPTION_ID = '1792fc32';
