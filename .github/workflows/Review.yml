@@ -1,4 +1,4 @@
-name: Move Issue to Review When Linked to PR
+name: Move Issue Card to Review When Linked to PR
 
 on:
   issues:
@@ -6,24 +6,56 @@ on:
       - linked
 
 jobs:
-  move-to-review:
+  move-card-to-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if linked resource is a pull request
+      - name: Check if the linked resource is a PR
         id: check_pr
         uses: actions/github-script@v7
         with:
           script: |
-            // The linked pull request is in context.payload.
             const linked = context.payload.timeline_event?.subject;
             if (linked && linked.type === 'PullRequest') {
               core.setOutput('is_pr', 'true');
             } else {
               core.setOutput('is_pr', 'false');
             }
-      - name: Add 'Review' label to issue
+
+      - name: Move project card to "Review"
         if: steps.check_pr.outputs.is_pr == 'true'
-        uses: actions-ecosystem/action-add-labels@v1
+        uses: actions/github-script@v7
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: Review
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Get all project cards for this issue
+            const cards = await github.rest.issues.listEventsForTimeline({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+
+            // Replace with your "Review" column ID
+            const REVIEW_COLUMN_ID = PVTSSF_lAHODSILks4A9pWSzgxSYFA;
+
+            let card_id = null;
+            for (const event of cards.data) {
+              if (event.project_card) {
+                card_id = event.project_card.id;
+              }
+            }
+            if (!card_id) {
+              core.setFailed('No project card found for this issue.');
+              return;
+            }
+
+            // Move the card to "Review" column
+            await github.rest.projects.moveCard({
+              card_id,
+              column_id: REVIEW_COLUMN_ID,
+              position: 'top'
+            });
