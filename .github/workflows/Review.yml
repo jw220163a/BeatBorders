@@ -40,7 +40,7 @@ jobs:
             });
 
             // Replace with your "Review" column ID
-            const REVIEW_COLUMN_ID = PVTSSF_lAHODSILks4A9pWSzgxSYFA;
+            const REVIEW_COLUMN_ID = 1792fc32;
 
             let card_id = null;
             for (const event of cards.data) {
