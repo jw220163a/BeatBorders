@@ -1,61 +1,81 @@
-name: Move Issue Card to Review When Linked to PR
+name: Move Linked Issues to Review When PR is Opened or Edited
 
 on:
-  issues:
-    types:
-      - linked
+  pull_request:
+    types: [opened, edited, synchronize]
 
 jobs:
-  move-card-to-review:
+  update-issues-status:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if the linked resource is a PR
-        id: check_pr
+      - name: Find referenced issues in PR body
+        id: find-issues
         uses: actions/github-script@v7
         with:
           script: |
-            const linked = context.payload.timeline_event?.subject;
-            if (linked && linked.type === 'PullRequest') {
-              core.setOutput('is_pr', 'true');
-            } else {
-              core.setOutput('is_pr', 'false');
-            }
+            const prBody = context.payload.pull_request.body || '';
+            const issueNumbers = [...prBody.matchAll(/#(\d+)/g)].map(m => m[1]);
+            core.setOutput('issues', JSON.stringify(issueNumbers));
 
-      - name: Move project card to "Review"
-        if: steps.check_pr.outputs.is_pr == 'true'
+      - name: Move referenced issues to Review
+        if: steps.find-issues.outputs.issues != '[]'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issue_number = context.issue.number;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const issueNumbers = JSON.parse('${{ steps.find-issues.outputs.issues }}');
+            const PROJECT_ID = '1';
+            const STATUS_FIELD_ID = 'PVTSSF_lAHODSILks4A9pWSzgxSYFA';
+            const REVIEW_OPTION_ID = '1792fc32';
 
-            // Get all project cards for this issue
-            const cards = await github.rest.issues.listEventsForTimeline({
-              owner,
-              repo,
-              issue_number,
-              per_page: 100
-            });
+            for (const issueNumber of issueNumbers) {
+              // Find the project item for this issue
+              const { repository } = await github.graphql(`
+                query($owner: String!, $repo: String!, $issue: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $issue) {
+                      id
+                      projectItems(first: 10) {
+                        nodes {
+                          id
+                          project {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue: parseInt(issueNumber, 10)
+              });
 
-            // Replace with your "Review" column ID
-            const REVIEW_COLUMN_ID = 1792fc32;
-
-            let card_id = null;
-            for (const event of cards.data) {
-              if (event.project_card) {
-                card_id = event.project_card.id;
+              const issue = repository.issue;
+              const projectItem = issue.projectItems.nodes.find(
+                n => n.project.id === PROJECT_ID
+              );
+              if (projectItem) {
+                await github.graphql(`
+                  mutation($itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: "${PROJECT_ID}"
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { singleSelectOptionId: $optionId }
+                      }
+                    ) {
+                      projectV2Item {
+                        id
+                      }
+                    }
+                  }
+                `, {
+                  itemId: projectItem.id,
+                  fieldId: STATUS_FIELD_ID,
+                  optionId: REVIEW_OPTION_ID
+                });
               }
             }
-            if (!card_id) {
-              core.setFailed('No project card found for this issue.');
-              return;
-            }
-
-            // Move the card to "Review" column
-            await github.rest.projects.moveCard({
-              card_id,
-              column_id: REVIEW_COLUMN_ID,
-              position: 'top'
-            });
