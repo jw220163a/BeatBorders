@@ -1,0 +1,29 @@
+name: Move Issue to Review When Linked to PR
+
+on:
+  issues:
+    types:
+      - linked
+
+jobs:
+  move-to-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if linked resource is a pull request
+        id: check_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // The linked pull request is in context.payload.
+            const linked = context.payload.timeline_event?.subject;
+            if (linked && linked.type === 'PullRequest') {
+              core.setOutput('is_pr', 'true');
+            } else {
+              core.setOutput('is_pr', 'false');
+            }
+      - name: Add 'Review' label to issue
+        if: steps.check_pr.outputs.is_pr == 'true'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: Review
