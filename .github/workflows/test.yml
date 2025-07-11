@@ -1,0 +1,12 @@
+name: Test PR Trigger
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  debug-trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm PR trigger is working
+        run: echo "PR workflow triggered!"
