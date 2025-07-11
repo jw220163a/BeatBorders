@@ -1,0 +1,9 @@
+spotify:
+  client_id: #YOUR_SPOTIFY_CLIENT_ID
+  client_secret: #YOUR_SPOTIFY_CLIENT_SECRET
+
+markets_limit: 300         # how many markets to process
+genres_limit: 50         # total genres to fetch globally
+tracks_per_genre: 800    # total tracks to fetch per genre
+top_n_genres: 5          # how many top genres to select globally
+top_n_artists: 5          # how many top artists per genre per country
